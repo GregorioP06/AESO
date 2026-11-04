@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# Verifica che sia stato specificato l'eseguibile
+if [ -z "$1" ]; then
+    echo "Uso: $0 <eseguibile_arm>"
+    exit 1
+fi
+
+EXEC="$1"
+PORT=12345
+
+# 1. Avvia QEMU in background mantenendo il PID del processo
+qemu-arm -g "$PORT" "$EXEC" &
+QEMU_PID=$!
+
+# 2. Trap: uccide il processo QEMU a prescindere da come termina lo script (uscita da GDB, Ctrl+C, errore)
+trap 'kill -9 $QEMU_PID 2>/dev/null' EXIT INT TERM
+
+# 3. Avvia GDB e si connette a QEMU
+gdb-multiarch -q --nh \
+    -ex "set architecture arm" \
+    -ex "file $EXEC" \
+    -ex "target remote localhost:$PORT"
